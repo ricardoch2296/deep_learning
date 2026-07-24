@@ -1,6 +1,6 @@
 """Utilidades de datos para el generador de musica en ABC notation.
 
-Aqui esta todo lo relacionado con: descargar el dataset de thesession.org,
+Aqui esta todo lo relacionado con: descargar el dataset (Nottingham),
 armar el corpus de texto, el tokenizador a nivel de caracter y la validacion
 de los tunes generados con music21.
 """
@@ -12,6 +12,16 @@ import pandas as pd
 
 # CSV oficial de thesession.org (se actualiza ~1 vez por semana)
 THESESSION_URL = "https://raw.githubusercontent.com/adactio/thesession-data/main/csv/tunes.csv"
+
+# Dataset Nottingham (version limpia de jukedeck): melodias en ABC CON acordes
+# ("G", "D7", ...) encima de la linea. A diferencia de thesession, estos tunes
+# traen acompañamiento de acordes y ritmos mas variados (con silencios).
+NMD_BASE = "https://raw.githubusercontent.com/jukedeck/nottingham-dataset/master/ABC_cleaned/"
+NMD_FILES = [
+    "ashover.abc", "hpps.abc", "jigs.abc", "morris.abc", "playford.abc",
+    "reelsa-c.abc", "reelsd-g.abc", "reelsh-l.abc", "reelsm-q.abc",
+    "reelsr-t.abc", "reelsu-z.abc", "slip.abc", "waltzes.abc", "xmas.abc",
+]
 
 # Cada tune del corpus empieza con este prompt y termina con el separador.
 # Usamos una linea en blanco como separador para que el modelo aprenda
@@ -64,6 +74,61 @@ def build_corpus(csv_path, max_body_len=400):
         key = mode_to_key(fila.get("mode", "C"))
         bloque = TUNE_START + "M:" + meter + "\n" + "K:" + key + "\n" + abc
         bloques.append(bloque)
+    corpus = TUNE_SEP.join(bloques) + TUNE_SEP
+    return corpus, bloques
+
+
+def download_nottingham(dest_dir="data/nottingham"):
+    """Descarga los .abc de Nottingham (si no estan ya) en dest_dir."""
+    os.makedirs(dest_dir, exist_ok=True)
+    for nombre in NMD_FILES:
+        ruta = os.path.join(dest_dir, nombre)
+        if os.path.exists(ruta):
+            continue
+        r = requests.get(NMD_BASE + nombre, timeout=60)
+        r.raise_for_status()
+        with open(ruta, "wb") as f:
+            f.write(r.content)
+    return dest_dir
+
+
+def _limpiar_tune(bloque):
+    """Deja solo lo musical de un tune: quita comentarios y fuentes, y
+    renumera la cabecera X: a 1 para que todos los tunes empiecen igual."""
+    lineas = []
+    for ln in bloque.splitlines():
+        if ln.startswith("%") or ln.startswith("S:") or ln.startswith("Y:"):
+            continue
+        if ln.startswith("X:"):
+            ln = "X:1"
+        lineas.append(ln)
+    return "\n".join(lineas).strip()
+
+
+def build_corpus_nottingham(dir="data/nottingham", min_len=60, max_len=700):
+    """Arma el corpus juntando todos los tunes de Nottingham.
+
+    Cada tune ya es un bloque ABC completo (cabecera + cuerpo con acordes).
+    Nos quedamos solo con tunes que traen acordes (comillas) para que el
+    modelo aprenda a generarlos, y filtramos por longitud.
+    """
+    bloques = []
+    for nombre in sorted(os.listdir(dir)):
+        if not nombre.endswith(".abc"):
+            continue
+        ruta = os.path.join(dir, nombre)
+        texto = open(ruta, encoding="utf-8", errors="ignore").read()
+        texto = texto.replace("\r\n", "\n").replace("\r", "\n")
+        # los tunes vienen separados por lineas en blanco
+        for crudo in texto.split("\n\n"):
+            crudo = crudo.strip()
+            if not crudo.startswith("X:"):
+                continue
+            if '"' not in crudo:  # solo tunes que traen acordes
+                continue
+            tune = _limpiar_tune(crudo)
+            if min_len <= len(tune) <= max_len:
+                bloques.append(tune)
     corpus = TUNE_SEP.join(bloques) + TUNE_SEP
     return corpus, bloques
 

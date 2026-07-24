@@ -2,7 +2,7 @@
 
 Proyecto final de Deep Learning (USFQ). Un **mini-GPT** (Transformer decoder a nivel de caracter) que genera melodias en [ABC notation](https://abcnotation.com/), comparado contra un **GRU** como baseline.
 
-- **Dataset:** [thesession.org](https://github.com/adactio/thesession-data) (`tunes.csv`, ~55k tunes irlandeses)
+- **Dataset:** [Nottingham Music Database](https://github.com/jukedeck/nottingham-dataset) (992 tunes folk en ABC **con acordes**: `"G"`, `"D7"`, ...)
 - **Tarea:** modelado de lenguaje causal (predecir el siguiente caracter)
 - **Framework:** PyTorch + PyTorch Lightning (GPT2 de HuggingFace)
 - **Comparacion:** loss, perplexity y % de tunes musicalmente validos (music21)
@@ -11,10 +11,10 @@ Proyecto final de Deep Learning (USFQ). Un **mini-GPT** (Transformer decoder a n
 
 | Modelo | params | test loss | perplexity | % validos |
 |--------|--------|-----------|------------|-----------|
-| GPT    | 4.83M  | 0.894     | 2.44       | 100       |
-| GRU    | 0.74M  | 1.075     | 2.93       | 100       |
+| GPT    | 4.86M  | 1.093     | 2.98       | 99        |
+| GRU    | 0.72M  | 1.165     | 3.21       | 100       |
 
-El GPT logra menor perplexity (mejor modelado de la secuencia); ambos generan 100% de tunes parseables a temperatura 0.9. Entrenado en una GPU NVIDIA H200 (~8 min).
+El GPT logra menor perplexity (mejor modelado de la secuencia); ambos superan el 99% de tunes parseables a temperatura 0.6. El modelo genera melodia **con acordes de acompanamiento**. Entrenado en una GPU NVIDIA H200 (~10 min).
 
 ## Estructura
 

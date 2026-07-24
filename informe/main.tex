@@ -20,13 +20,13 @@
 
 \begin{abstract}
 Entrenamos un Transformer decoder pequeno (mini-GPT) a nivel de caracter para
-generar melodias de musica tradicional irlandesa en ABC notation, usando el
-corpus publico de thesession.org. Comparamos el modelo contra una red recurrente
+generar melodias folk en ABC notation con acompanamiento de acordes, usando el
+Nottingham Music Database. Comparamos el modelo contra una red recurrente
 GRU como baseline en terminos de perplexity y de porcentaje de tunes
-musicalmente validos (parseables con music21). El mini-GPT (4.83M parametros)
-alcanza una perplexity de 2.44 en test, frente a 2.93 del GRU (0.74M), y ambos
-generan un 100\% de tunes sintacticamente validos con temperatura de muestreo
-moderada.
+musicalmente validos (parseables con music21). A diferencia de un corpus de
+melodias monofonicas, los tunes de Nottingham incluyen simbolos de acorde
+(\texttt{"G"}, \texttt{"D7"}) y ritmos mas variados, por lo que el modelo aprende
+a generar melodia y acordes de forma conjunta.
 \end{abstract}
 
 \section{Introduccion}
@@ -52,13 +52,15 @@ folk, trabajo directamente relacionado con el nuestro.
 \section{Metodologia}
 
 \subsection{Datos}
-Usamos el volcado publico de thesession.org~\cite{thesession} (\texttt{tunes.csv}).
-Cada tune se reconstruye como un bloque ABC con cabecera de compas (\texttt{M:})
-y tonalidad (\texttt{K:}) seguida del cuerpo. Descartamos tunes vacios o de mas de
-400 caracteres. El corpus final tiene
-\texttt{51{,}154} tunes y \texttt{11.5M} caracteres, con un vocabulario de
-\texttt{116} caracteres. Separamos 80/10/10 en train/val/test (9.2M ventanas de
-entrenamiento).
+Usamos el Nottingham Music Database~\cite{nottingham} en su version limpia de
+jukedeck, una coleccion de melodias folk britanicas y americanas (jigs, reels,
+valses, canciones) en ABC notation. A diferencia de un corpus monofonico, cada
+tune trae \textbf{simbolos de acorde} entre comillas (p.ej. \texttt{"G"},
+\texttt{"D7"}) sobre la melodia, ademas de silencios y compases variados. Cada
+tune ya es un bloque ABC completo (cabecera + cuerpo); nos quedamos solo con los
+que contienen acordes y filtramos por longitud (60--700 caracteres). El corpus
+final tiene \texttt{992} tunes y \texttt{362K} caracteres, con un vocabulario de
+\texttt{86} caracteres. Separamos 80/10/10 en train/val/test.
 
 \subsection{Tokenizacion}
 Tokenizamos a nivel de caracter (un entero por caracter unico). Es la
@@ -67,10 +69,10 @@ el conjunto reducido de simbolos de ABC.
 
 \subsection{Modelos}
 El \textbf{mini-GPT} es un \texttt{GPT2LMHeadModel} de HuggingFace con
-$n_{layer}=6$, $n_{embd}=256$, $n_{head}=8$, contexto de 256 caracteres y
-dropout 0.1, con \texttt{4.83M} parametros. El \textbf{baseline GRU} es un
+$n_{layer}=6$, $n_{embd}=256$, $n_{head}=8$, contexto de 384 caracteres y
+dropout 0.1, con \texttt{4.86M} parametros. El \textbf{baseline GRU} es un
 \texttt{nn.Embedding} (128) seguido de una GRU de 2 capas (hidden 256) y una capa
-lineal a vocabulario, con \texttt{0.74M} parametros. Ambos optimizan la misma
+lineal a vocabulario, con \texttt{0.72M} parametros. Ambos optimizan la misma
 perdida de entropia cruzada sobre el siguiente caracter, para que la comparacion
 sea justa.
 
@@ -94,11 +96,11 @@ una nota.
 \toprule
 Modelo & params & test loss & perplexity & \% validos \\
 \midrule
-GPT & 4.83M & 0.894 & \textbf{2.44} & 100 \\
-GRU & 0.74M & 1.075 & 2.93 & 100 \\
+GPT & 4.86M & 1.093 & \textbf{2.98} & 99 \\
+GRU & 0.72M & 1.165 & 3.21 & 100 \\
 \bottomrule
 \end{tabular}
-\caption{Comparacion GPT vs GRU (test, temperatura 0.9).}
+\caption{Comparacion GPT vs GRU (test, temperatura 0.6).}
 \label{tab:res}
 \end{table}
 
@@ -111,15 +113,17 @@ GRU & 0.74M & 1.075 & 2.93 & 100 \\
 \end{figure}}{}
 
 La Tabla~\ref{tab:res} resume los resultados. El mini-GPT obtiene una perplexity
-menor (2.44 vs 2.93), lo que confirma que la auto-atencion modela mejor la
+menor (2.98 vs 3.21), lo que confirma que la auto-atencion modela mejor la
 secuencia que la recurrencia del GRU, pese a que el GPT tiene mas parametros. La
 Figura~\ref{fig:loss} muestra que ambos modelos convergen sin sobreajuste
 marcado (train y val se mantienen juntas). En cambio, la metrica de validez
-sintactica se satura: ambos modelos alcanzan 100\% de tunes parseables por
-music21 a temperatura 0.9. Esto indica que aprender la \emph{sintaxis} de ABC es
-relativamente facil para las dos arquitecturas, y que la validez sintactica no
-distingue calidad musical; la ventaja del GPT se ve en la perplexity, no en la
-validez.
+sintactica casi se satura: ambos modelos superan el 99\% de tunes parseables por
+music21 a temperatura 0.6. Esto indica que aprender la \emph{sintaxis} de ABC
+(incluyendo los acordes) es relativamente facil para las dos arquitecturas, y que
+la validez sintactica no distingue calidad musical; la ventaja del GPT se ve en la
+perplexity, no en la validez. Frente a un corpus monofonico, la perplexity aqui es
+algo mayor porque el modelo tambien debe predecir los acordes, que anaden
+incertidumbre.
 
 \IfFileExists{figs/ablation_temp.png}{
 \begin{figure}[t]
@@ -129,35 +133,39 @@ validez.
 \label{fig:temp}
 \end{figure}}{}
 
-La Figura~\ref{fig:temp} muestra el efecto de la temperatura: valores bajos
-generan tunes mas conservadores y validos, mientras que valores altos aumentan la
-diversidad a costa de producir texto mal formado.
+La Figura~\ref{fig:temp} muestra el efecto de la temperatura: con valores bajos
+(0.5--0.7) el GPT produce 100\% de tunes validos y mas conservadores, mientras que
+al subir la temperatura (1.1--1.3) la validez cae (76\% y 56\%) porque aumenta la
+diversidad a costa de producir texto mal formado. Por eso generamos con
+temperatura 0.6.
 
 El Listado~\ref{lst:tune} muestra un tune generado por el mini-GPT: respeta la
-cabecera (compas y tonalidad), usa barras de repeticion (\texttt{|: :|}) y finales
-alternativos (\texttt{|1 |2}), evidencia de que aprendio la estructura tipica de
-un tune irlandes.
+cabecera (compas y tonalidad), incluye \textbf{acordes} de acompanamiento
+(\texttt{"D"}, \texttt{"G"}, \texttt{"A7"}) sobre la melodia y usa barras de
+repeticion (\texttt{:| ::}), evidencia de que aprendio a generar melodia y armonia
+de forma conjunta.
 
-\begin{lstlisting}[caption={Tune generado por el mini-GPT (temperatura 0.9).},label=lst:tune]
+\begin{lstlisting}[caption={Tune generado por el mini-GPT (temperatura 0.6).},label=lst:tune]
 X:1
-M:4/4
-K:Am
-|:D(3FFF FFEF|ABcd (3efg ag|
-fd (3dfd Adfa|gfed BA (3Bcd|
-cdef ecAc|BGGE FDD2|
-GABc efge|1 dBAc d4:|2 dBAc d2cd||
+T:The Brong The Gron
+M:6/8
+K:D
+"D"d2A AFA|"D"d2d fga|"G"bag "A7"edc|"D"d3 d2::
+A|"D"F2A AFA|"Bm"d2d "A"e2A|"Em"B2d "A7"efg|"D"fga "A7"bag|
+"D"a2d AFA|"G"B2d "A7"efg|"D"aga "A7"gec|"D"d3 -d2:|
 \end{lstlisting}
 
 \section{Conclusiones}
 Presentamos un generador de musica en ABC notation basado en un mini-GPT y lo
-comparamos con un GRU. El GPT logra menor perplexity (2.44 vs 2.93), confirmando
-la ventaja de la atencion sobre la recurrencia para modelar la estructura de un
-tune, mientras que ambos alcanzan 100\% de validez sintactica. Entre las
-limitaciones estan el tamano reducido de los modelos y que la validez sintactica
-no garantiza calidad musical (una mejor evaluacion requeriria juicio humano o
-metricas musicales). Como mejoras futuras se podrian usar tokenizacion por
-sub-unidades musicales, modelos mas grandes, o condicionar la generacion por tipo
-de tune o tonalidad.
+comparamos con un GRU. Usando el Nottingham Music Database, el modelo genera
+melodias \textbf{con acordes de acompanamiento}, y el GPT logra menor perplexity
+(2.98 vs 3.21), confirmando la ventaja de la atencion sobre la recurrencia para
+modelar la estructura de un tune, mientras que ambos superan el 99\% de validez
+sintactica. Entre las limitaciones estan el tamano reducido de los modelos y del
+corpus, y que la validez sintactica no garantiza calidad musical (una mejor
+evaluacion requeriria juicio humano o metricas musicales). Como mejoras futuras se
+podrian usar tokenizacion por sub-unidades musicales, modelos mas grandes, o
+condicionar la generacion por tipo de tune o tonalidad.
 
 \bibliographystyle{plain}
 \bibliography{refs}
