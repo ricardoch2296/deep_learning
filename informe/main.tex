@@ -1,0 +1,138 @@
+\documentclass[twocolumn]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[margin=2cm]{geometry}
+
+\lstset{basicstyle=\ttfamily\footnotesize, breaklines=true, frame=single}
+
+\title{Generacion de musica en ABC notation con un mini-GPT:\\ un estudio comparativo frente a un GRU}
+\author{Ricardo Chaves \\ Deep Learning --- USFQ}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Entrenamos un Transformer decoder pequeno (mini-GPT) a nivel de caracter para
+generar melodias de musica tradicional irlandesa en ABC notation, usando el
+corpus publico de thesession.org. Comparamos el modelo contra una red recurrente
+GRU como baseline en terminos de perplexity y de porcentaje de tunes
+musicalmente validos (parseables con music21). % TODO: 1-2 frases con el resultado principal tras entrenar.
+\end{abstract}
+
+\section{Introduccion}
+La generacion simbolica de musica puede plantearse como un problema de modelado
+de lenguaje: la ABC notation representa una melodia como texto, por lo que
+generar musica equivale a predecir el siguiente caracter dada la secuencia
+previa. En este trabajo abordamos esa tarea y comparamos dos familias de modelos
+vistas en el curso: redes recurrentes (GRU) y Transformers (GPT). El objetivo es
+evaluar si la atencion captura mejor la estructura de largo alcance de un tune
+(tonalidad, compas y forma AABB) que una RNN.
+
+\section{Trabajos relacionados}
+El modelado de texto a nivel de caracter con RNN fue popularizado por
+Karpathy~\cite{karpathy2015rnn}, quien mostro que un LSTM/GRU puede aprender
+estructura de secuencias discretas. La GRU~\cite{cho2014gru} simplifica al LSTM
+manteniendo buena memoria de largo plazo. El Transformer~\cite{vaswani2017attention}
+reemplaza la recurrencia por auto-atencion, y GPT~\cite{radford2019language} lo
+aplica al modelado causal de lenguaje. En musica, Sturm et
+al.~\cite{sturm2016music} usaron RNN sobre ABC notation para componer melodias
+folk, trabajo directamente relacionado con el nuestro.
+
+\section{Metodologia}
+
+\subsection{Datos}
+Usamos el volcado publico de thesession.org~\cite{thesession} (\texttt{tunes.csv}).
+Cada tune se reconstruye como un bloque ABC con cabecera de compas (\texttt{M:})
+y tonalidad (\texttt{K:}) seguida del cuerpo. Descartamos tunes vacios o de mas de
+400 caracteres. El corpus final tiene aproximadamente
+% TODO: N tunes y M caracteres (ver salida del notebook)
+\texttt{51k} tunes y \texttt{11.5M} caracteres, con un vocabulario de
+\texttt{116} caracteres. Separamos 80/10/10 en train/val/test.
+
+\subsection{Tokenizacion}
+Tokenizamos a nivel de caracter (un entero por caracter unico). Es la
+representacion mas simple y evita un vocabulario de sub-palabras, adecuado para
+el conjunto reducido de simbolos de ABC.
+
+\subsection{Modelos}
+El \textbf{mini-GPT} es un \texttt{GPT2LMHeadModel} de HuggingFace con
+$n_{layer}=6$, $n_{embd}=256$, $n_{head}=8$, contexto de 256 caracteres y
+dropout 0.1, con aproximadamente \texttt{XX}M parametros. % TODO: poner el valor real del notebook
+El \textbf{baseline GRU} es un \texttt{nn.Embedding} (128)
+seguido de una GRU de 2 capas (hidden 256) y una capa lineal a vocabulario. Ambos
+optimizan la misma perdida de entropia cruzada sobre el siguiente caracter, para
+que la comparacion sea justa.
+
+\subsection{Entrenamiento}
+Entrenamos por pasos (no epochs) dado el gran numero de ventanas. El GPT usa
+AdamW ($lr=3\times10^{-4}$) con warmup y decaimiento coseno; el GRU usa Adam
+($lr=2\times10^{-3}$). Guardamos el mejor checkpoint segun \texttt{val\_loss}.
+El entrenamiento se realizo en una GPU NVIDIA H200.
+
+\subsection{Evaluacion}
+Reportamos \texttt{test\_loss} y perplexity ($\exp(\text{loss})$). Ademas, medimos
+la \emph{validez musical}: generamos 100 tunes por modelo y contamos que fraccion
+puede parsearse con music21~\cite{cuthbert2010music21} como una pieza con al menos
+una nota.
+
+\section{Resultados y discusion}
+
+% TODO: reemplazar los valores de la tabla con la salida del notebook (informe/figs/resultados.csv)
+\begin{table}[t]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Modelo & test loss & perplexity & \% validos \\
+\midrule
+GPT & XX & XX & XX \\
+GRU & XX & XX & XX \\
+\bottomrule
+\end{tabular}
+\caption{Comparacion GPT vs GRU.}
+\label{tab:res}
+\end{table}
+
+\IfFileExists{figs/loss.png}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/loss.png}
+\caption{Curvas de perdida (train/val) del GPT y el GRU.}
+\label{fig:loss}
+\end{figure}}{}
+
+La Tabla~\ref{tab:res} resume los resultados.
+% TODO: discutir. Se espera que el GPT logre menor perplexity y mayor % de validos
+% por manejar mejor las dependencias largas del tune. Comentar el resultado real.
+
+\IfFileExists{figs/ablation_temp.png}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/ablation_temp.png}
+\caption{Efecto de la temperatura de muestreo sobre el \% de tunes validos.}
+\label{fig:temp}
+\end{figure}}{}
+
+La Figura~\ref{fig:temp} muestra el efecto de la temperatura: valores bajos
+generan tunes mas conservadores y validos, mientras que valores altos aumentan la
+diversidad a costa de producir texto mal formado.
+
+\section{Conclusiones}
+% TODO: completar con los hallazgos reales.
+Presentamos un generador de musica en ABC notation basado en un mini-GPT y lo
+comparamos con un GRU. % Resumir cual gano y por que.
+Entre las limitaciones estan el tamano reducido del modelo y que la validez
+sintactica no garantiza calidad musical. Como mejoras futuras se podrian usar
+tokenizacion por sub-unidades musicales, modelos mas grandes o filtrado del
+dataset por tipo de tune.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

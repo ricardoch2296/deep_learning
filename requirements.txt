@@ -1,0 +1,9 @@
+torch
+lightning
+transformers
+torchmetrics
+pandas
+numpy
+matplotlib
+music21
+requests

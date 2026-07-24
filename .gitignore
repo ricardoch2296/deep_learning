@@ -1,0 +1,24 @@
+# datos y artefactos de entrenamiento
+data/
+logs/
+lightning_logs/
+checkpoints/
+*.ckpt
+
+# salidas generadas (se pueden regenerar)
+samples/*.mid
+samples/*.wav
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# latex
+informe/*.aux
+informe/*.log
+informe/*.out
+informe/*.bbl
+informe/*.blg
+informe/*.synctex.gz
