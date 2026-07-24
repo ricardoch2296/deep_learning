@@ -5,8 +5,7 @@ lightning_logs/
 checkpoints/
 *.ckpt
 
-# salidas generadas (se pueden regenerar)
-samples/*.mid
+# audio pesado generado (el .mid de ejemplo si se versiona)
 samples/*.wav
 
 # python

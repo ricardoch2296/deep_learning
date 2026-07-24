@@ -23,7 +23,10 @@ Entrenamos un Transformer decoder pequeno (mini-GPT) a nivel de caracter para
 generar melodias de musica tradicional irlandesa en ABC notation, usando el
 corpus publico de thesession.org. Comparamos el modelo contra una red recurrente
 GRU como baseline en terminos de perplexity y de porcentaje de tunes
-musicalmente validos (parseables con music21). % TODO: 1-2 frases con el resultado principal tras entrenar.
+musicalmente validos (parseables con music21). El mini-GPT (4.83M parametros)
+alcanza una perplexity de 2.44 en test, frente a 2.93 del GRU (0.74M), y ambos
+generan un 100\% de tunes sintacticamente validos con temperatura de muestreo
+moderada.
 \end{abstract}
 
 \section{Introduccion}
@@ -51,10 +54,10 @@ folk, trabajo directamente relacionado con el nuestro.
 Usamos el volcado publico de thesession.org~\cite{thesession} (\texttt{tunes.csv}).
 Cada tune se reconstruye como un bloque ABC con cabecera de compas (\texttt{M:})
 y tonalidad (\texttt{K:}) seguida del cuerpo. Descartamos tunes vacios o de mas de
-400 caracteres. El corpus final tiene aproximadamente
-% TODO: N tunes y M caracteres (ver salida del notebook)
-\texttt{51k} tunes y \texttt{11.5M} caracteres, con un vocabulario de
-\texttt{116} caracteres. Separamos 80/10/10 en train/val/test.
+400 caracteres. El corpus final tiene
+\texttt{51{,}154} tunes y \texttt{11.5M} caracteres, con un vocabulario de
+\texttt{116} caracteres. Separamos 80/10/10 en train/val/test (9.2M ventanas de
+entrenamiento).
 
 \subsection{Tokenizacion}
 Tokenizamos a nivel de caracter (un entero por caracter unico). Es la
@@ -64,11 +67,11 @@ el conjunto reducido de simbolos de ABC.
 \subsection{Modelos}
 El \textbf{mini-GPT} es un \texttt{GPT2LMHeadModel} de HuggingFace con
 $n_{layer}=6$, $n_{embd}=256$, $n_{head}=8$, contexto de 256 caracteres y
-dropout 0.1, con aproximadamente \texttt{XX}M parametros. % TODO: poner el valor real del notebook
-El \textbf{baseline GRU} es un \texttt{nn.Embedding} (128)
-seguido de una GRU de 2 capas (hidden 256) y una capa lineal a vocabulario. Ambos
-optimizan la misma perdida de entropia cruzada sobre el siguiente caracter, para
-que la comparacion sea justa.
+dropout 0.1, con \texttt{4.83M} parametros. El \textbf{baseline GRU} es un
+\texttt{nn.Embedding} (128) seguido de una GRU de 2 capas (hidden 256) y una capa
+lineal a vocabulario, con \texttt{0.74M} parametros. Ambos optimizan la misma
+perdida de entropia cruzada sobre el siguiente caracter, para que la comparacion
+sea justa.
 
 \subsection{Entrenamiento}
 Entrenamos por pasos (no epochs) dado el gran numero de ventanas. El GPT usa
@@ -84,18 +87,17 @@ una nota.
 
 \section{Resultados y discusion}
 
-% TODO: reemplazar los valores de la tabla con la salida del notebook (informe/figs/resultados.csv)
 \begin{table}[t]
 \centering
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-Modelo & test loss & perplexity & \% validos \\
+Modelo & params & test loss & perplexity & \% validos \\
 \midrule
-GPT & XX & XX & XX \\
-GRU & XX & XX & XX \\
+GPT & 4.83M & 0.894 & \textbf{2.44} & 100 \\
+GRU & 0.74M & 1.075 & 2.93 & 100 \\
 \bottomrule
 \end{tabular}
-\caption{Comparacion GPT vs GRU.}
+\caption{Comparacion GPT vs GRU (test, temperatura 0.9).}
 \label{tab:res}
 \end{table}
 
@@ -107,9 +109,16 @@ GRU & XX & XX & XX \\
 \label{fig:loss}
 \end{figure}}{}
 
-La Tabla~\ref{tab:res} resume los resultados.
-% TODO: discutir. Se espera que el GPT logre menor perplexity y mayor % de validos
-% por manejar mejor las dependencias largas del tune. Comentar el resultado real.
+La Tabla~\ref{tab:res} resume los resultados. El mini-GPT obtiene una perplexity
+menor (2.44 vs 2.93), lo que confirma que la auto-atencion modela mejor la
+secuencia que la recurrencia del GRU, pese a que el GPT tiene mas parametros. La
+Figura~\ref{fig:loss} muestra que ambos modelos convergen sin sobreajuste
+marcado (train y val se mantienen juntas). En cambio, la metrica de validez
+sintactica se satura: ambos modelos alcanzan 100\% de tunes parseables por
+music21 a temperatura 0.9. Esto indica que aprender la \emph{sintaxis} de ABC es
+relativamente facil para las dos arquitecturas, y que la validez sintactica no
+distingue calidad musical; la ventaja del GPT se ve en la perplexity, no en la
+validez.
 
 \IfFileExists{figs/ablation_temp.png}{
 \begin{figure}[t]
@@ -124,13 +133,15 @@ generan tunes mas conservadores y validos, mientras que valores altos aumentan l
 diversidad a costa de producir texto mal formado.
 
 \section{Conclusiones}
-% TODO: completar con los hallazgos reales.
 Presentamos un generador de musica en ABC notation basado en un mini-GPT y lo
-comparamos con un GRU. % Resumir cual gano y por que.
-Entre las limitaciones estan el tamano reducido del modelo y que la validez
-sintactica no garantiza calidad musical. Como mejoras futuras se podrian usar
-tokenizacion por sub-unidades musicales, modelos mas grandes o filtrado del
-dataset por tipo de tune.
+comparamos con un GRU. El GPT logra menor perplexity (2.44 vs 2.93), confirmando
+la ventaja de la atencion sobre la recurrencia para modelar la estructura de un
+tune, mientras que ambos alcanzan 100\% de validez sintactica. Entre las
+limitaciones estan el tamano reducido de los modelos y que la validez sintactica
+no garantiza calidad musical (una mejor evaluacion requeriria juicio humano o
+metricas musicales). Como mejoras futuras se podrian usar tokenizacion por
+sub-unidades musicales, modelos mas grandes, o condicionar la generacion por tipo
+de tune o tonalidad.
 
 \bibliographystyle{plain}
 \bibliography{refs}
