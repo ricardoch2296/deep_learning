@@ -36,7 +36,8 @@ generar musica equivale a predecir el siguiente caracter dada la secuencia
 previa. En este trabajo abordamos esa tarea y comparamos dos familias de modelos
 vistas en el curso: redes recurrentes (GRU) y Transformers (GPT). El objetivo es
 evaluar si la atencion captura mejor la estructura de largo alcance de un tune
-(tonalidad, compas y forma AABB) que una RNN.
+(tonalidad, compas y forma AABB) que una RNN. El codigo y los modelos estan
+disponibles en \url{https://github.com/ricardoch2296/deep_learning}.
 
 \section{Trabajos relacionados}
 El modelado de texto a nivel de caracter con RNN fue popularizado por
@@ -131,6 +132,21 @@ validez.
 La Figura~\ref{fig:temp} muestra el efecto de la temperatura: valores bajos
 generan tunes mas conservadores y validos, mientras que valores altos aumentan la
 diversidad a costa de producir texto mal formado.
+
+El Listado~\ref{lst:tune} muestra un tune generado por el mini-GPT: respeta la
+cabecera (compas y tonalidad), usa barras de repeticion (\texttt{|: :|}) y finales
+alternativos (\texttt{|1 |2}), evidencia de que aprendio la estructura tipica de
+un tune irlandes.
+
+\begin{lstlisting}[caption={Tune generado por el mini-GPT (temperatura 0.9).},label=lst:tune]
+X:1
+M:4/4
+K:Am
+|:D(3FFF FFEF|ABcd (3efg ag|
+fd (3dfd Adfa|gfed BA (3Bcd|
+cdef ecAc|BGGE FDD2|
+GABc efge|1 dBAc d4:|2 dBAc d2cd||
+\end{lstlisting}
 
 \section{Conclusiones}
 Presentamos un generador de musica en ABC notation basado en un mini-GPT y lo
