@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Comparacion Transformer vs GRU</title>
+<script src="https://cdn.jsdelivr.net/npm/abcjs@6/dist/abcjs-basic-min.js"></script>
+<style>
+  body { font-family: sans-serif; margin: 2rem; max-width: 800px; }
+  h1 { font-size: 1.2rem; }
+  h2 { font-size: 1rem; margin-top: 1.5rem; }
+  pre { background: #f4f4f4; padding: 0.6rem; font-size: 0.75rem; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Comparacion Transformer vs GRU</h1>
+<p>Semilla 789, temperatura 0.6</p>
+
+<h2>Transformer</h2>
+<div id="partitura-t"></div>
+<div id="audio-t"></div>
+<pre id="texto-t"></pre>
+
+<h2>GRU</h2>
+<div id="partitura-g"></div>
+<div id="audio-g"></div>
+<pre id="texto-g"></pre>
+
+<script>
+const abcT = "X:1\nT:Melodia generada con Transformer\nM:6/8\nK:G\nG2A |\"G\"B2B B2c|\"G\"d2c B2d|\"C\"e3 \"G\"d2e|\"G\"d2c B2d|\n\"C\"e2c \"G\"d2B|\"Am\"c2c \"D7\"B2A|\"G\"G6|\"G\"G3 GAB|\"D7\"c2c ABA|\"G\"G3 G2B|\"D7\"A3 -A2B|\\\n\"G\"G3 -G2A|\n\"G\"B2B B2d|\"C\"e2e \"G\"d2B|\"Am\"c2B \"D7\"ABc|\"G\"d3 -B2d|\"G\"d2c B2d|\"Am\"e2e \"D7\"d2B|\\\n\"G\"G3 -G2:|";
+const abcG = "X:1\nT:Melodia generada con GRU\nM:6/8\nK:G\n\"G\"G2G GGA|\"G\"B2B BAG|\"D\"A2G FGA|\"G\"B2B Bcd|\"C\"e2e e2G|\"G\"D3 -D2B|\"Em\"G2G G2B|\"Am\"d2c \"D7\"B2c|\n\"G\"d2B GBd|\"C\"e2d \"Em\"d2c|\"G\"B2G \"D7\"A2d|\"G\"d2g \"D7\"def|\n\"G\"g2g g2f|\"C\"e2d \"A7\"c2B|\"D7\"A3 \"G\"B2G|\"G\"D3 -D3 :|\n\"G\"d2B GBd|\"C\"e2f g2e|\"G\"d2d dBd|\"G\"B2G G2D|\"Am\"E2A \"D7\"GED|\n\"G\"G2G G2G|\"G\"dBG dBd|\"C\"e2f \"G\"d2c|\"G\"B2G \"D7\"A3|\"G\"d2d \"C\"e2d|\"A7\"cBc \"D7\"def|\n\"G\"g2g \"C\"gfe|\"G\"d2d d2B|\"D7\"ded \"G\"d2B|\"D7\"ABc \"G\"d2";
+
+function cargar(idP, idA, idX, abc) {
+  document.getElementById(idX).textContent = abc;
+  const obj = ABCJS.renderAbc(idP, abc, { responsive: "resize" })[0];
+  if (ABCJS.synth.supportsAudio()) {
+    const s = new ABCJS.synth.SynthController();
+    s.load("#" + idA, null, { displayPlay: true });
+    s.setTune(obj, false, { chordsOff: false });
+  }
+}
+
+cargar("partitura-t", "audio-t", "texto-t", abcT);
+cargar("partitura-g", "audio-g", "texto-g", abcG);
+</script>
+</body>
+</html>

@@ -20,10 +20,12 @@ El GPT logra menor perplexity (mejor modelado de la secuencia); ambos superan el
 
 ```
 deep_learning/
-  notebooks/abc_gpt.ipynb   # notebook principal (todo el flujo)
-  src/abc_utils.py          # datos, tokenizador y validacion con music21
+  notebooks/abc_gpt.ipynb   # notebook principal (entrenamiento + evaluacion)
+  src/abc_utils.py          # datos, tokenizador y validacion
+  checkpoints/              # modelos entrenados (.ckpt) — local, no en git
+  logs/                     # metricas de entrenamiento
+  muestras/                 # melodias generadas + comparacion.html
   informe/                  # articulo en LaTeX
-  samples/                  # tunes generados (.abc, .mid)
 ```
 
 ## Como ejecutar
@@ -36,10 +38,20 @@ pip install -r requirements.txt   # instala music21 si falta
 jupyter notebook notebooks/abc_gpt.ipynb
 ```
 
-El notebook descarga los datos, entrena el GPT y el GRU, evalua y genera tunes. El entrenamiento va por `MAX_STEPS` (no por epochs) para controlar el tiempo.
+El notebook descarga los datos, entrena el Transformer y el GRU, evalua y genera melodias.
+
+Para **generar otra comparacion** (sin reentrenar), con los checkpoints en `checkpoints/`:
+
+```bash
+conda activate usfq
+python muestras/generar_muestras.py 456
+```
+
+Abrir `muestras/comparacion.html` en el navegador.
 
 ## Reproducibilidad
 
 - Semilla fija (`seed_everything(42)`).
 - Hiperparametros centralizados en una sola celda del notebook.
-- Los tunes generados se guardan en `samples/` y las figuras en `informe/figs/`.
+- Los tunes generados se guardan en `muestras/` y las figuras en `informe/figs/`.
+- Para escuchar y comparar: abrir `muestras/comparacion.html` (se genera con `generar_muestras.py`).

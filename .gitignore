@@ -6,7 +6,7 @@ checkpoints/
 *.ckpt
 
 # audio pesado generado (el .mid de ejemplo si se versiona)
-samples/*.wav
+muestras/*.wav
 
 # python
 __pycache__/
